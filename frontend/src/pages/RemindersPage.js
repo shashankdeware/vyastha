@@ -12,11 +12,6 @@ export default function RemindersPage() {
     api.get('/reminders/pending').then((r) => setData(r.data)).catch(() => toast.error('Reminders load nahi hue')).finally(() => setLoading(false));
   }, []);
 
-  const sendWhatsApp = (rem) => {
-    if (!rem.whatsapp_url) { toast.error('Is customer ka valid phone number nahi hai'); return; }
-    window.open(rem.whatsapp_url, '_blank');
-  };
-
   const copyMsg = (msg) => { navigator.clipboard.writeText(msg); toast.success('Message copy ho gaya'); };
 
   if (loading) return <div className="py-20 text-center text-slate-500">Loading reminders...</div>;
@@ -59,14 +54,21 @@ export default function RemindersPage() {
               <div className="flex items-center gap-3">
                 <span className="font-mono font-bold text-amber-600 text-lg">{formatINR(r.balance_due)}</span>
                 <button onClick={() => copyMsg(r.message)} title="Copy message" className="p-2.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200"><Copy size={16} /></button>
-                <button
-                  data-testid={`whatsapp-btn-${r.invoice_number}`}
-                  onClick={() => sendWhatsApp(r)}
-                  disabled={!r.has_phone}
-                  className="px-4 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#1ebe5b] text-white text-sm font-bold flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <MessageCircle size={16} /> WhatsApp
-                </button>
+                {r.has_phone ? (
+                  <a
+                    data-testid={`whatsapp-btn-${r.invoice_number}`}
+                    href={r.whatsapp_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#1ebe5b] text-white text-sm font-bold flex items-center gap-2"
+                  >
+                    <MessageCircle size={16} /> WhatsApp
+                  </a>
+                ) : (
+                  <button data-testid={`whatsapp-btn-${r.invoice_number}`} disabled title="No phone number" className="px-4 py-2.5 rounded-xl bg-[#25D366] text-white text-sm font-bold flex items-center gap-2 opacity-40 cursor-not-allowed">
+                    <MessageCircle size={16} /> WhatsApp
+                  </button>
+                )}
               </div>
             </div>
           ))}

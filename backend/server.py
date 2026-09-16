@@ -2288,7 +2288,8 @@ async def subscription_receipts(user: dict = Depends(get_current_user)):
         taxable = round(gross / 1.18, 2)  # price is GST-inclusive
         gst = round(gross - taxable, 2)
         created = p.get("created_at", "")
-        rno = f"VYA-RCP-{(created[:10] or '').replace('-', '')}-{str(idx + 1).zfill(3)}"
+        sid = (p.get("session_id") or "").replace("cs_", "")[-6:].upper() or str(idx + 1).zfill(3)
+        rno = f"VYA-RCP-{(created[:10] or '').replace('-', '')}-{sid}"
         plan = await sub_svc.get_plan_doc(p.get("plan_slug", "pro")) or {}
         receipts.append({
             "receipt_number": rno,

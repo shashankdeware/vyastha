@@ -52,3 +52,14 @@ control, notifications, and mobile/PWA readiness — without breaking existing f
 ## Next Tasks
 - Run testing agent (backend + frontend), fix issues.
 - Then polish legacy page visuals and add subscription receipts.
+
+## Iteration 2 (2026-06) — 4 new features (all tested 100%, no functional bugs)
+- WhatsApp Reminders: GET /api/reminders/pending builds wa.me click-to-chat links (no API key) with
+  prefilled overdue-invoice messages; new /reminders page with per-invoice WhatsApp + copy buttons.
+- Subscription GST Receipts: GET /api/subscription/receipts (stable receipt numbers from session_id,
+  18% GST inclusive breakup); Billing History section on SubscriptionPage with client-side jsPDF download.
+- AI Invoice Draft: ai_assistant.extract_invoice_draft turns a spoken/typed request into a structured
+  draft (suggested_action type invoice_draft); AskVyastha confirm -> sessionStorage -> InvoiceBuilder prefill.
+- Analytics Dashboard: GET /api/analytics/overview (advanced_analytics gated) -> /analytics page with
+  recharts area (sales vs collected, 6 months), top-products bar, payment-status pie + KPIs.
+- Trial is now granted at registration (register endpoint) so analytics/AI work immediately for new users.
