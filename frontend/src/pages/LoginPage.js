@@ -19,9 +19,11 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
   try {
-  await login(email, password);
+  const res = await login(email, password);
   toast.success('Welcome back!');
-  sessionStorage.setItem('vyastha_show_welcome', '1');
+  if (res?.user?.role !== 'admin') {
+    sessionStorage.setItem('vyastha_show_welcome', '1');
+  }
   navigate('/dashboard');
 } catch (err) {
       toast.error(err.response?.data?.detail || 'Invalid login credentials');

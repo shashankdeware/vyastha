@@ -1,0 +1,40 @@
+{
+  "summary": "Comprehensive backend + frontend testing for Vyastha GST SaaS after subscription/AI/admin/notifications enhancement. Added 24 new pytest cases (test_new_features.py) covering plans, subscription trial + Stripe checkout session creation, AI Ask Vyastha (suggestions, alerts, ask with real business data, empty-question 422, auth 401), notifications, notification prefs, integrations status, admin panel (stats/users/plans/audit-logs, plan update roundtrip, non-admin 403) and GST split (intrastate CGST/SGST vs interstate IGST). 24/24 new tests pass. Existing backend_test.py suite continues to pass (previously validated). Frontend: register flow -> dashboard renders with KPI cards + blue Hinglish trial banner (Free Trial: 89 din baaki hain), Ask Vyastha FAB opens panel with Namaste greeting, all 4 language chips, suggested-question chips across Sales/Payments/Inventory/Customers/Business Advice categories, and returns real Gemini-powered reply for 'How many sales today?' using the tenant's actual data. Subscription page renders current-plan card, monthly/yearly toggle, and both plan cards with correct ₹49/₹499 pricing and Upgrade CTA. nav-admin-link is hidden for business_owner and visible for admin. AdminPage shows Overview/Plans/Users/AI Audit Logs tabs; Plans tab shows editable monthly/yearly/trial inputs seeded to 49/499/90 for pro.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "AdminPage (admin user)", "issues": ["Admin account still shows the blue 'Free Trial: 89 din baaki hain' upgrade banner and Ask Vyastha FAB. Admins are internal users, not billed tenants — banner and upgrade CTA should be hidden for role=admin."]},
+      {"screen": "Admin login first-run", "issues": ["A full-screen Namaste greeting overlay is shown on every admin login and intercepts pointer events (nav-admin-link click was blocked until Skip was pressed). Consider showing only once (localStorage flag) and ensuring keyboard/click-through fallback."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_new_features.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/new_features.xml"
+  ],
+  "action_items": [
+    "Hide trial banner + Ask Vyastha FAB for role=admin in Layout.js (do not call ensure_trial for admins or gate banner by !isAdmin).",
+    "Persist onboarding/greeting dismissal so admin/business users don't see the fullscreen overlay every login."
+  ],
+  "critical_code_review_comments": [
+    "Nav-admin-link click was intercepted by fullscreen greeting overlay: overlay should either auto-dismiss or set pointer-events:none once user is authenticated to avoid blocking navigation.",
+    "GET /api/subscription runs sub_svc.ensure_trial(user_id) unconditionally — this creates a trialing subscription row for admin@vyastha.com too. Consider skipping ensure_trial for role=admin.",
+    "POST /api/subscription/checkout is missing rate limiting and does not check that the caller is not already on an active paid subscription of the same plan.",
+    "GET /api/subscription/status/{session_id} is unauthenticated. Any user knowing a session_id can poll status and trigger a Stripe status fetch. Consider requiring auth and validating ownership (record['user_id'] == current user)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_new_features.py"
+  ],
+  "success_rate": {"backend": "100% (24/24 new tests)", "frontend": "100% of tested flows"},
+  "test_credentials": "Admin: admin@vyastha.com / adminpassword123 (seeded). New business owners registered per-test with TEST_/testui prefix.",
+  "seed_data_creation": "None persisted beyond pytest — each test creates a fresh TEST_ user and cleans up its own invoices/products/quotations. Plan price update test reverts pro monthly_price to original.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Both suites live under /app/backend/tests/. Use fixture 'client' (demo login Bearer token) for existing flows and _sess(token) helper in test_new_features.py for fresh registered users. Never complete Stripe payment; /api/subscription/checkout returns a real Stripe checkout_url + session_id and /status/{id} returns pending. AI /api/ai/ask requires ai_business_assistant entitlement, which is granted by the auto 90-day Pro trial on registration. Frontend testids of interest: register-*, login-*, nav-admin-link (admin-only), ask-vyastha-fab, ai-lang-{hinglish|hindi|english|marathi}, ai-input, ai-send-btn, ask-vyastha-close, trial-banner, banner-upgrade-link, subscription-title, cycle-monthly/cycle-yearly, plan-card-{free|pro}, admin-tab-{overview|plans|users|logs}.",
+  "rca of the issue": "N/A — no functional bugs found. Only UX polish items (admin banner + greeting overlay) listed under design_issues/action_items."
+}

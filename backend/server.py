@@ -1877,7 +1877,8 @@ async def list_plans():
 @api_router.get("/entitlements")
 async def get_entitlements(user: dict = Depends(get_current_user)):
     user_id = user.get("id") or str(user["_id"])
-    await sub_svc.ensure_trial(user_id)
+    if user.get("role") != "admin":
+        await sub_svc.ensure_trial(user_id)
     ent = await features_lib.resolve_entitlements(user_id)
     return ent
 
@@ -1885,7 +1886,8 @@ async def get_entitlements(user: dict = Depends(get_current_user)):
 @api_router.get("/subscription")
 async def get_subscription(user: dict = Depends(get_current_user)):
     user_id = user.get("id") or str(user["_id"])
-    await sub_svc.ensure_trial(user_id)
+    if user.get("role") != "admin":
+        await sub_svc.ensure_trial(user_id)
     ent = await features_lib.resolve_entitlements(user_id)
     sub = await features_lib.get_business_subscription(user_id)
     plan = await sub_svc.get_plan_doc(ent["plan_slug"]) or {}
@@ -1968,10 +1970,13 @@ async def create_subscription_checkout(body: CheckoutBody, request: Request, use
 
 
 @api_router.get("/subscription/status/{session_id}")
-async def subscription_status(session_id: str, request: Request):
+async def subscription_status(session_id: str, request: Request, user: dict = Depends(get_current_user)):
+    user_id = user.get("id") or str(user["_id"])
     record = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
     if not record:
         raise HTTPException(status_code=404, detail="Transaction not found")
+    if record.get("user_id") != user_id and user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Not your transaction")
     if record.get("payment_status") != "paid":
         try:
             from emergentintegrations.payments.stripe.checkout import StripeCheckout
