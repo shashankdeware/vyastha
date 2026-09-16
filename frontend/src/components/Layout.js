@@ -20,6 +20,8 @@ import {
   Sparkles,
   Crown,
   Shield,
+  MessageCircle,
+  BarChart3,
   Menu,
   X
 } from 'lucide-react';
@@ -79,6 +81,8 @@ export default function Layout({ children }) {
       badge: `${draftStats.today_drafts_count || 0}/50`
     },
     { name: 'Payments', path: '/payments', icon: CreditCard, testId: 'nav-payments-link' },
+    { name: 'Reminders', path: '/reminders', icon: MessageCircle, testId: 'nav-reminders-link' },
+    { name: 'Analytics', path: '/analytics', icon: BarChart3, testId: 'nav-analytics-link' },
     { 
       name: 'Inventory', 
       path: '/inventory', 

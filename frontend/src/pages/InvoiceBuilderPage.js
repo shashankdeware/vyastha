@@ -128,6 +128,28 @@ export default function InvoiceBuilderPage() {
     }
   }, [id]);
 
+  // Prefill from an Ask Vyastha AI invoice draft (one-time).
+  useEffect(() => {
+    if (id) return;
+    const raw = sessionStorage.getItem('vyastha_invoice_draft');
+    if (!raw) return;
+    sessionStorage.removeItem('vyastha_invoice_draft');
+    try {
+      const draft = JSON.parse(raw);
+      const items = (draft.line_items || []).map((it) => ({
+        product_id: '', description: it.description || '', quantity: Number(it.quantity) || 1,
+        unit: 'pc', pieces: Number(it.quantity) || 1, unit_price: Number(it.unit_price) || 0,
+        amount: (Number(it.quantity) || 1) * (Number(it.unit_price) || 0),
+      }));
+      setInvoice((prev) => ({
+        ...prev,
+        buyer_details: { ...prev.buyer_details, company_name: draft.buyer?.company_name || '', phone: draft.buyer?.phone || '' },
+        line_items: items.length ? items : prev.line_items,
+      }));
+      toast.success('Ask Vyastha se invoice draft load ho gaya');
+    } catch (e) { /* ignore malformed draft */ }
+  }, [id]);
+
   useEffect(() => {
     const subtotal = invoice.line_items.reduce((sum, item) => {
       const qty = parseFloat(item.quantity) || 0;

@@ -22,6 +22,8 @@ import SettingsPage from './pages/SettingsPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import SubscriptionSuccessPage from './pages/SubscriptionSuccessPage';
 import AdminPage from './pages/AdminPage';
+import AnalyticsPage from './pages/AnalyticsPage';
+import RemindersPage from './pages/RemindersPage';
 
 function ProtectedRoute({ children, withLayout = true }) {
   const { user, loading } = useAuth();
@@ -206,6 +208,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AdminPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analytics"
+              element={
+                <ProtectedRoute>
+                  <AnalyticsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reminders"
+              element={
+                <ProtectedRoute>
+                  <RemindersPage />
                 </ProtectedRoute>
               }
             />

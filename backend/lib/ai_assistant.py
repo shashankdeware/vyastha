@@ -84,17 +84,71 @@ async def _gather_context(user_id: str, question: str) -> dict:
 
 def _suggest_action(question: str) -> dict | None:
     q = question.lower()
-    if any(k in q for k in ["create invoice", "invoice banao", "naya invoice", "bill banao", "make invoice"]):
-        return {"type": "navigate", "label": "Open Invoice Builder", "target": "/invoices/new",
-                "confirm": "Main aapko naya GST invoice banane ke liye Invoice Builder par le jaऊं?"}
     if any(k in q for k in ["create quotation", "quotation banao", "quote banao"]):
         return {"type": "navigate", "label": "Open Quotation Builder", "target": "/quotations/new",
                 "confirm": "Kya main Quotation Builder khol doon?"}
     if any(k in q for k in ["reorder", "low stock", "inventory"]):
         return {"type": "navigate", "label": "Review Inventory", "target": "/inventory", "confirm": None}
-    if any(k in q for k in ["pending", "overdue", "payment reminder"]):
-        return {"type": "navigate", "label": "View Payments", "target": "/payments", "confirm": None}
+    if any(k in q for k in ["pending", "overdue", "payment reminder", "reminder"]):
+        return {"type": "navigate", "label": "View Payment Reminders", "target": "/reminders", "confirm": None}
     return None
+
+
+def _is_invoice_intent(question: str) -> bool:
+    q = question.lower()
+    triggers = ["invoice banao", "bill banao", "create invoice", "make invoice", "naya invoice",
+                "invoice bana", "bill bana", "generate invoice", "invoice for", "ka invoice",
+                "ka bill", "bill for"]
+    return any(t in q for t in triggers)
+
+
+async def extract_invoice_draft(user_id: str, question: str) -> dict | None:
+    """Ask the LLM to turn a natural request into a structured invoice draft."""
+    if not EMERGENT_LLM_KEY:
+        return None
+    products = await db.products.find({"user_id": user_id}, {"_id": 0, "name": 1, "unit_price": 1}).to_list(200)
+    customers = await db.customers.find({"user_id": user_id}, {"_id": 0, "company_name": 1, "phone": 1}).to_list(200)
+    catalog = {
+        "products": [{"name": p.get("name"), "price": p.get("unit_price", 0)} for p in products][:100],
+        "customers": [{"name": c.get("company_name"), "phone": c.get("phone", "")} for c in customers][:100],
+    }
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    sys = (
+        "You convert an Indian business owner's request into a STRICT JSON invoice draft. "
+        "Use ONLY this exact JSON shape and nothing else: "
+        '{"buyer":{"company_name":"","phone":""},"line_items":[{"description":"","quantity":1,"unit_price":0}]}. '
+        "Match product names/prices and customer names from the provided catalog when possible. "
+        "If a price is not given or known, estimate 0. Output ONLY raw JSON, no markdown, no commentary."
+    )
+    chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=f"draft-{user_id}", system_message=sys).with_model(AI_MODEL_PROVIDER, AI_MODEL_NAME)
+    prompt = f"Catalog JSON:\n{json.dumps(catalog, ensure_ascii=False)}\n\nRequest: {question}\n\nReturn the invoice draft JSON."
+    try:
+        raw = await chat.send_message(UserMessage(text=prompt))
+        text = raw if isinstance(raw, str) else str(raw)
+        text = text.strip()
+        if text.startswith("```"):
+            text = text.strip("`")
+            text = text[text.find("{"):]
+        start, end = text.find("{"), text.rfind("}")
+        draft = json.loads(text[start:end + 1])
+        items = []
+        for it in draft.get("line_items", [])[:20]:
+            desc = str(it.get("description", "")).strip()
+            if not desc:
+                continue
+            items.append({
+                "description": desc,
+                "quantity": float(it.get("quantity", 1) or 1),
+                "unit_price": float(it.get("unit_price", 0) or 0),
+            })
+        if not items:
+            return None
+        return {"buyer": {"company_name": str(draft.get("buyer", {}).get("company_name", "")).strip(),
+                          "phone": str(draft.get("buyer", {}).get("phone", "")).strip()},
+                "line_items": items}
+    except Exception as exc:
+        logger.error("Invoice draft extraction failed: %s", exc)
+        return None
 
 
 async def ask(user_id: str, question: str, language: str = "hinglish", business_name: str = "your business",
@@ -131,6 +185,13 @@ async def ask(user_id: str, question: str, language: str = "hinglish", business_
                 "suggested_action": None, "configured": True, "error": True}
 
     action = _suggest_action(question)
+    if _is_invoice_intent(question):
+        draft = await extract_invoice_draft(user_id, question)
+        if draft:
+            total = sum(i["quantity"] * i["unit_price"] for i in draft["line_items"])
+            action = {"type": "invoice_draft", "label": "Review & Open Invoice",
+                      "confirm": f"Main ₹{total:,.0f} ka invoice draft taiyaar kar raha hoon. Kya main ise Invoice Builder mein khol doon?",
+                      "draft": draft}
 
     # Audit log (tenant-scoped).
     try:

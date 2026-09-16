@@ -4,6 +4,7 @@ from pathlib import Path
 import os
 import logging
 import uuid
+from urllib.parse import quote as _url_quote
 from datetime import datetime, timezone, timedelta, date
 from typing import List, Optional, Dict, Any
 import bcrypt
@@ -465,6 +466,10 @@ async def register(input: UserRegister, response: Response):
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.users.insert_one(user_doc)
+    try:
+        await sub_svc.ensure_trial(user_id)
+    except Exception as e:
+        logger.error(f"Trial grant on register failed: {e}")
     
     # Create initial company profile
     await db.company_profiles.update_one(
@@ -2212,6 +2217,151 @@ async def admin_update_plan(slug: str, body: AdminPlanUpdate, admin: dict = Depe
 async def admin_audit_logs(admin: dict = Depends(require_admin)):
     logs = await db.ai_audit_logs.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
     return logs
+
+
+# ==========================================
+# WhatsApp Payment Reminders (click-to-chat)
+# ==========================================
+def _wa_phone(raw: str) -> str:
+    digits = "".join(c for c in (raw or "") if c.isdigit())
+    if len(digits) == 10:
+        digits = "91" + digits
+    if digits.startswith("0") and len(digits) == 11:
+        digits = "91" + digits[1:]
+    return digits
+
+
+@api_router.get("/reminders/pending")
+async def reminders_pending(user: dict = Depends(get_current_user)):
+    user_id = user.get("id") or str(user["_id"])
+    profile = await db.company_profiles.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    biz_name = profile.get("company_name") or user.get("company_name") or "our business"
+    upi = (profile.get("bank_details") or {}).get("upi_id", "")
+    invs = await db.invoices.find(
+        {"user_id": user_id, "status": {"$ne": "cancelled"}, "payment_status": {"$ne": "paid"}},
+        {"_id": 0},
+    ).sort("invoice_date", 1).to_list(500)
+    today = date.today().isoformat()
+    items = []
+    for i in invs:
+        buyer = i.get("buyer_details") or {}
+        phone = _wa_phone(buyer.get("phone", ""))
+        balance = round(i.get("balance_due", i.get("total_amount", 0)), 2)
+        overdue = bool(i.get("invoice_date") and i.get("invoice_date") < (date.today().replace(day=1)).isoformat())
+        msg = (
+            f"Namaste {buyer.get('company_name', 'ji')}, "
+            f"aapke invoice {i.get('invoice_number')} ka payment {_inr(balance)} pending hai. "
+            f"Kripya jaldi payment karein."
+            + (f" UPI: {upi}." if upi else "")
+            + f"\n\nDhanyavaad,\n{biz_name}"
+        )
+        wa_link = (f"https://wa.me/{phone}?text=" + _url_quote(msg)) if phone else ""
+        items.append({
+            "invoice_id": i.get("id"),
+            "invoice_number": i.get("invoice_number"),
+            "customer": buyer.get("company_name", ""),
+            "phone": buyer.get("phone", ""),
+            "has_phone": bool(phone),
+            "balance_due": balance,
+            "invoice_date": i.get("invoice_date"),
+            "overdue": overdue,
+            "message": msg,
+            "whatsapp_url": wa_link,
+        })
+    items.sort(key=lambda x: (not x["overdue"], -x["balance_due"]))
+    return {"count": len(items), "total_outstanding": round(sum(x["balance_due"] for x in items), 2), "reminders": items}
+
+
+# ==========================================
+# Subscription payment receipts (GST-style)
+# ==========================================
+@api_router.get("/subscription/receipts")
+async def subscription_receipts(user: dict = Depends(get_current_user)):
+    user_id = user.get("id") or str(user["_id"])
+    profile = await db.company_profiles.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    paid = await db.payment_transactions.find(
+        {"user_id": user_id, "payment_status": "paid"}, {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    receipts = []
+    for idx, p in enumerate(paid):
+        gross = float(p.get("amount", 0))
+        taxable = round(gross / 1.18, 2)  # price is GST-inclusive
+        gst = round(gross - taxable, 2)
+        created = p.get("created_at", "")
+        rno = f"VYA-RCP-{(created[:10] or '').replace('-', '')}-{str(idx + 1).zfill(3)}"
+        plan = await sub_svc.get_plan_doc(p.get("plan_slug", "pro")) or {}
+        receipts.append({
+            "receipt_number": rno,
+            "date": created[:10],
+            "plan_name": plan.get("name", p.get("plan_slug", "Pro")),
+            "billing_cycle": p.get("billing_cycle"),
+            "amount": round(gross, 2),
+            "taxable_value": taxable,
+            "gst_amount": gst,
+            "cgst": round(gst / 2, 2),
+            "sgst": round(gst / 2, 2),
+            "gst_rate": 18,
+            "currency": "INR",
+            "session_id": p.get("session_id"),
+            "seller_gstin": profile.get("gstin_number", ""),
+            "buyer_name": user.get("company_name", ""),
+        })
+    return {"count": len(receipts), "receipts": receipts}
+
+
+# ==========================================
+# Analytics (advanced_analytics feature)
+# ==========================================
+@api_router.get("/analytics/overview")
+async def analytics_overview(user: dict = Depends(get_current_user)):
+    user_id = user.get("id") or str(user["_id"])
+    if not await features_lib.has_feature(user_id, "advanced_analytics"):
+        raise HTTPException(status_code=402, detail={"error": "upgrade_required", "feature": "advanced_analytics",
+                                                     "message": "Advanced analytics is a Pro feature."})
+    invoices = await db.invoices.find({"user_id": user_id, "status": {"$ne": "cancelled"}}, {"_id": 0}).to_list(5000)
+    payments = await db.payments.find({"user_id": user_id, "status": "successful"}, {"_id": 0}).to_list(5000)
+
+    # last 6 months buckets
+    months = []
+    cur = date.today().replace(day=1)
+    for _ in range(6):
+        months.append(cur.strftime("%Y-%m"))
+        prev_month_last = cur - timedelta(days=1)
+        cur = prev_month_last.replace(day=1)
+    months = list(reversed(months))
+    sales_by_month = {m: 0.0 for m in months}
+    pay_by_month = {m: 0.0 for m in months}
+    for i in invoices:
+        d = (i.get("invoice_date") or "")[:7]
+        if d in sales_by_month:
+            sales_by_month[d] += i.get("total_amount", 0)
+    for p in payments:
+        d = (p.get("payment_date") or "")[:7]
+        if d in pay_by_month:
+            pay_by_month[d] += p.get("amount", 0)
+    monthly = [{"month": m, "sales": round(sales_by_month[m], 2), "collected": round(pay_by_month[m], 2)} for m in months]
+
+    # payment status breakdown
+    status_counts = {"paid": 0, "partially_paid": 0, "unpaid": 0}
+    for i in invoices:
+        st = i.get("payment_status", "unpaid")
+        status_counts[st] = status_counts.get(st, 0) + 1
+    breakdown = [{"name": k, "value": v} for k, v in status_counts.items() if v > 0]
+
+    top = await ai_data_svc.get_top_products(user_id, 6)
+    total_sales = sum(i.get("total_amount", 0) for i in invoices)
+    total_collected = sum(p.get("amount", 0) for p in payments)
+    return {
+        "monthly": monthly,
+        "payment_breakdown": breakdown,
+        "top_products": top["top_products"],
+        "totals": {
+            "total_sales": round(total_sales, 2),
+            "total_collected": round(total_collected, 2),
+            "outstanding": round(total_sales - total_collected, 2),
+            "invoice_count": len(invoices),
+        },
+    }
 
 
 # Include the router LAST so every route above is registered.

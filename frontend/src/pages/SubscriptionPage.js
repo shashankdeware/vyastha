@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { useEntitlements } from '../context/EntitlementContext';
 import { formatINR } from '../lib/format';
-import { Check, Sparkles, Crown, Loader2, ShieldCheck, Zap } from 'lucide-react';
+import { Check, Sparkles, Crown, Loader2, ShieldCheck, Zap, Download, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
 
 export default function SubscriptionPage() {
   const [plans, setPlans] = useState([]);
+  const [receipts, setReceipts] = useState([]);
   const [cycle, setCycle] = useState('yearly');
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState('');
@@ -14,7 +16,39 @@ export default function SubscriptionPage() {
 
   useEffect(() => {
     api.get('/plans').then((r) => setPlans(r.data)).catch(() => {}).finally(() => setLoading(false));
+    api.get('/subscription/receipts').then((r) => setReceipts(r.data.receipts || [])).catch(() => {});
   }, []);
+
+  const downloadReceipt = (rc) => {
+    const doc = new jsPDF();
+    doc.setFontSize(18); doc.setFont(undefined, 'bold');
+    doc.text('Vyastha — Payment Receipt', 14, 20);
+    doc.setFontSize(10); doc.setFont(undefined, 'normal');
+    doc.text('Smart Billing • Smart Business', 14, 26);
+    doc.setDrawColor(200); doc.line(14, 30, 196, 30);
+    const rows = [
+      ['Receipt No.', rc.receipt_number],
+      ['Date', rc.date],
+      ['Billed To', rc.buyer_name || '-'],
+      ['Plan', `${rc.plan_name} (${rc.billing_cycle})`],
+      ['Taxable Value', formatINR(rc.taxable_value)],
+      [`CGST (${rc.gst_rate / 2}%)`, formatINR(rc.cgst)],
+      [`SGST (${rc.gst_rate / 2}%)`, formatINR(rc.sgst)],
+      ['Total GST', formatINR(rc.gst_amount)],
+      ['Amount Paid (incl. GST)', formatINR(rc.amount)],
+    ];
+    if (rc.seller_gstin) rows.splice(3, 0, ['Seller GSTIN', rc.seller_gstin]);
+    let y = 40;
+    rows.forEach(([k, v]) => {
+      doc.setFont(undefined, 'bold'); doc.text(String(k), 14, y);
+      doc.setFont(undefined, 'normal'); doc.text(String(v), 90, y);
+      y += 9;
+    });
+    doc.setDrawColor(200); doc.line(14, y, 196, y);
+    doc.setFontSize(9);
+    doc.text('This is a computer-generated GST receipt for your Vyastha subscription.', 14, y + 8);
+    doc.save(`${rc.receipt_number}.pdf`);
+  };
 
   const upgrade = async (slug) => {
     if (!gateway_configured) { toast.error('Payment gateway abhi configure nahi hai'); return; }
@@ -127,6 +161,27 @@ export default function SubscriptionPage() {
       </div>
       {!gateway_configured && (
         <p className="text-center text-xs text-amber-600">Payment gateway setup pending — checkout temporarily unavailable.</p>
+      )}
+
+      {/* Billing history / GST receipts */}
+      {receipts.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5" data-testid="receipts-section">
+          <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2"><Receipt size={18} className="text-blue-600" /> Billing History</h3>
+          <div className="divide-y divide-slate-100">
+            {receipts.map((rc) => (
+              <div key={rc.receipt_number} className="py-3 flex items-center justify-between gap-3" data-testid={`receipt-${rc.receipt_number}`}>
+                <div className="min-w-0">
+                  <p className="font-mono text-sm font-bold text-slate-900">{rc.receipt_number}</p>
+                  <p className="text-xs text-slate-500">{rc.date} · {rc.plan_name} ({rc.billing_cycle})</p>
+                </div>
+                <span className="font-mono font-bold text-slate-900">{formatINR(rc.amount)}</span>
+                <button data-testid={`download-receipt-${rc.receipt_number}`} onClick={() => downloadReceipt(rc)} className="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5">
+                  <Download size={14} /> GST Receipt
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

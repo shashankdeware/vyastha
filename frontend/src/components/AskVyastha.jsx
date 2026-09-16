@@ -100,6 +100,12 @@ export default function AskVyastha() {
       navigate(pendingAction.target);
       setOpen(false);
       setPendingAction(null);
+    } else if (pendingAction?.type === 'invoice_draft') {
+      sessionStorage.setItem('vyastha_invoice_draft', JSON.stringify(pendingAction.draft));
+      navigate('/invoices/new');
+      setOpen(false);
+      setPendingAction(null);
+      toast.success('Invoice draft taiyaar hai — details confirm karke save karein');
     }
   };
 
