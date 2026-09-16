@@ -1,0 +1,470 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+/* =========================
+   WELCOME SCREEN
+========================= */
+
+.vyastha-welcome-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+
+  margin: 0;
+  padding: 0;
+
+  z-index: 2147483647;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  overflow: hidden;
+
+  background: radial-gradient(
+    circle at center,
+    #155bc0 0%,
+    #06459f 45%,
+    #02337b 100%
+  );
+
+  animation: welcomeFadeIn 0.5s ease forwards;
+}
+
+/* =========================
+   CONTENT
+========================= */
+
+.vyastha-welcome-content {
+  position: relative;
+  z-index: 5;
+
+  width: 100%;
+  text-align: center;
+
+  animation: contentEnter 1s cubic-bezier(0.2, 0.8, 0.2, 1)
+    forwards;
+}
+
+/* =========================
+   NAMASTE
+========================= */
+
+.namaste-wrapper {
+  position: relative;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  min-width: 320px;
+
+  color: #fff;
+}
+
+/* No line above Namaste */
+
+.namaste-text {
+  position: relative;
+
+  margin: 0;
+
+  font-family:
+    "Noto Sans Devanagari",
+    "Mangal",
+    sans-serif;
+
+  font-size: clamp(65px, 9vw, 115px);
+
+  font-weight: 500;
+
+  line-height: 1;
+
+  color: #fff;
+
+  opacity: 0;
+
+  transform: translateY(25px);
+
+  animation: namasteReveal 1.2s
+    cubic-bezier(0.2, 0.8, 0.2, 1)
+    forwards 0.5s;
+}
+
+/* =========================
+   SWOOSH
+========================= */
+
+/*
+   Swoosh ko Namaste ke niche
+   center mein rakha gaya hai.
+*/
+
+.namaste-swoosh {
+  position: relative;
+
+  width: 175px;
+  height: 35px;
+
+  margin-top: -2px;
+
+  border-bottom: 6px solid #fff;
+
+  border-radius: 0 0 80% 80%;
+
+  transform: rotate(-10deg) scaleX(0);
+
+  transform-origin: center;
+
+  animation: swooshDraw 1s
+    cubic-bezier(0.2, 0.8, 0.2, 1)
+    forwards 1.7s;
+}
+
+/* =========================
+   USER NAME
+========================= */
+
+.welcome-user {
+  margin-top: 24px;
+
+  font-size: 22px;
+
+  font-weight: 500;
+
+  color: rgba(255, 255, 255, 0.92);
+
+  opacity: 0;
+
+  animation: fadeUp 0.8s ease forwards 2.4s;
+}
+
+/* =========================
+   BRAND
+========================= */
+
+.welcome-brand {
+  margin-top: 12px;
+
+  font-size: 15px;
+
+  letter-spacing: 5px;
+
+  text-transform: uppercase;
+
+  color: rgba(255, 255, 255, 0.65);
+
+  opacity: 0;
+
+  animation: fadeUp 0.8s ease forwards 2.7s;
+}
+
+/* =========================
+   BUTTONS
+========================= */
+
+.welcome-actions {
+  margin-top: 38px;
+
+  display: flex;
+
+  justify-content: center;
+
+  gap: 12px;
+
+  opacity: 0;
+
+  animation: fadeUp 0.8s ease forwards 3.1s;
+}
+
+.edit-greeting-btn,
+.skip-btn {
+  border: 0;
+
+  padding: 11px 20px;
+
+  border-radius: 12px;
+
+  cursor: pointer;
+
+  font-size: 14px;
+
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.edit-greeting-btn {
+  color: #06459f;
+
+  background: #fff;
+}
+
+.skip-btn {
+  color: #fff;
+
+  background: rgba(255, 255, 255, 0.12);
+
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.edit-greeting-btn:hover,
+.skip-btn:hover {
+  transform: translateY(-2px);
+}
+
+/* =========================
+   GREETING EDITOR
+========================= */
+
+.greeting-editor {
+  width: min(90vw, 430px);
+
+  padding: 32px;
+
+  border-radius: 24px;
+
+  background: rgba(255, 255, 255, 0.12);
+
+  backdrop-filter: blur(20px);
+
+  -webkit-backdrop-filter: blur(20px);
+
+  border: 1px solid rgba(255, 255, 255, 0.2);
+
+  color: #fff;
+}
+
+.editor-title {
+  font-size: 24px;
+
+  font-weight: 600;
+}
+
+.editor-subtitle {
+  margin-top: 8px;
+
+  font-size: 14px;
+
+  opacity: 0.7;
+}
+
+.greeting-editor input {
+  width: 100%;
+
+  margin-top: 24px;
+
+  padding: 14px 16px;
+
+  box-sizing: border-box;
+
+  border: 0;
+
+  outline: none;
+
+  border-radius: 12px;
+
+  font-size: 22px;
+
+  font-family:
+    "Noto Sans Devanagari",
+    "Mangal",
+    sans-serif;
+}
+
+/* =========================
+   EDITOR BUTTONS
+========================= */
+
+.editor-buttons {
+  display: flex;
+
+  gap: 10px;
+
+  margin-top: 18px;
+}
+
+.save-btn,
+.cancel-btn {
+  flex: 1;
+
+  padding: 12px;
+
+  border: 0;
+
+  border-radius: 10px;
+
+  cursor: pointer;
+}
+
+.save-btn {
+  background: #fff;
+
+  color: #06459f;
+}
+
+.cancel-btn {
+  background: rgba(255, 255, 255, 0.12);
+
+  color: #fff;
+}
+
+/* =========================
+   GLOW
+========================= */
+
+.vyastha-glow {
+  position: absolute;
+
+  width: 300px;
+  height: 300px;
+
+  border-radius: 50%;
+
+  background: rgba(255, 255, 255, 0.08);
+
+  filter: blur(60px);
+
+  animation: floatingGlow 5s
+    ease-in-out infinite;
+}
+
+.glow-one {
+  top: -100px;
+  left: -100px;
+}
+
+.glow-two {
+  right: -100px;
+  bottom: -100px;
+
+  animation-delay: 1.5s;
+}
+
+/* =========================
+   ANIMATIONS
+========================= */
+
+@keyframes welcomeFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes contentEnter {
+  from {
+    opacity: 0;
+
+    transform: scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+
+    transform: scale(1);
+  }
+}
+
+@keyframes namasteReveal {
+  from {
+    opacity: 0;
+
+    transform: translateY(25px);
+  }
+
+  to {
+    opacity: 1;
+
+    transform: translateY(0);
+  }
+}
+
+@keyframes swooshDraw {
+  from {
+    transform: rotate(-10deg) scaleX(0);
+  }
+
+  to {
+    transform: rotate(-10deg) scaleX(1);
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+
+    transform: translateY(15px);
+  }
+
+  to {
+    opacity: 1;
+
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatingGlow {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate(30px, -20px) scale(1.15);
+  }
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 600px) {
+  .namaste-wrapper {
+    min-width: 280px;
+  }
+
+  .namaste-text {
+    font-size: 72px;
+  }
+
+  .namaste-swoosh {
+    width: 130px;
+
+    height: 28px;
+
+    border-bottom-width: 5px;
+  }
+
+  .welcome-user {
+    font-size: 18px;
+  }
+}
+
+/* =========================
+   REDUCED MOTION
+========================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+
+    animation-iteration-count: 1 !important;
+  }
+}

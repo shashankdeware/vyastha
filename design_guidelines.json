@@ -1,0 +1,50 @@
+{
+  "app_name": "Vyastha - Business Billing & Invoicing System",
+  "context": "dashboards_and_admin_panels",
+  "archetype": "swiss_and_high_contrast",
+  "forbidden_rules": {
+    "forbidden_color": "teal green or teal blue (#1B93A4) and #7351B7",
+    "forbidden_font": "space grotesk, Inter for Headings",
+    "transparent_backgrounds_forbidden": true
+  },
+  "typography": {
+    "heading": "Cabinet Grotesk, Outfit, sans-serif",
+    "body": "IBM Plex Sans, sans-serif",
+    "mono": "JetBrains Mono, monospace"
+  },
+  "colors": {
+    "primary": "#0F172A",
+    "accent": "#2563EB",
+    "success": "#16A34A",
+    "warning": "#CA8A04",
+    "destructive": "#DC2626",
+    "background": "#F8FAFC",
+    "surface": "#FFFFFF",
+    "border": "#E2E8F0"
+  },
+  "image_urls": [
+    {
+      "category": "branding_placeholder",
+      "description": "Invoice and corporate branding sample document",
+      "image_url": "https://images.unsplash.com/photo-1693045181288-87092e30f862"
+    },
+    {
+      "category": "office_admin",
+      "description": "Administrative work and invoice sorting",
+      "image_url": "https://images.pexels.com/photos/8872719/pexels-photo-8872719.jpeg"
+    }
+  ],
+  "components": [
+    "BusinessOnboardingWizard",
+    "CompanyProfileSettings",
+    "InvoiceBuilder",
+    "QuotationBuilder",
+    "InvoicePDFPreview",
+    "DraftsTracker",
+    "UPIPaymentModal",
+    "PaymentHistoryDashboard",
+    "InventoryManager",
+    "CustomersDirectory"
+  ],
+  "instructions_to_main_agent": "Ensure all interactive elements have data-testid attributes, use Sonner for toasts, implement quick demo login, maintain real-time invoice and quotation calculations, and enforce the 50 drafts/day tracker."
+}
