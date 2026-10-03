@@ -1,6 +1,8 @@
 # Vyastha website
 
-Static site: open `index.html` in a browser, or upload the whole folder to any static host (Netlify, Vercel, GitHub Pages, cPanel).
+Static site with client-side routes: `/`, `/about`, `/features`, `/pricing`, `/founders`, `/security`, `/contact`.
+All routes are served by `index.html`. `vercel.json` holds the rewrites, so it deploys on Vercel as-is. On Netlify add `/* /index.html 200` to `_redirects`. Opening `index.html` directly from disk shows the home page only; use a local server (e.g. `npx serve -s .`) to test routes.
+Opening animation: plays once per browser session on `/`, skippable (click / any key), disabled for reduced-motion users.
 
 ## Edit links, prices, trial
 Open `index.html`, search for `const CFG=` near the bottom:
@@ -19,5 +21,10 @@ Empty values leave that button inactive.
 - privacy.html, terms.html, refund.html are noindex draft placeholders. Replace with real text.
 - OG image currently uses logo.png; add a 1200x630 image and update og:image/twitter:image.
 
-## Contact
-The Help & Contact section has two direct buttons: Email and WhatsApp. Set SUPPORT_EMAIL and WHATSAPP_NUMBER (with country code, e.g. 919876543210) in `CFG`. No backend or environment variables needed. A button with an empty value is hidden.
+## Contact (no verification)
+`api/contact/start.js` + `api/contact/verify.js` are Vercel serverless functions. The visitor's email is verified with a 6-digit code before the message is forwarded to you.
+Set these in Vercel -> Project -> Settings -> Environment Variables, then redeploy:
+- SMTP_HOST, SMTP_PORT (587), SMTP_USER, SMTP_PASSWORD, SMTP_FROM_EMAIL (e.g. Gmail: smtp.gmail.com + an App Password)
+- CONTACT_INBOX = the email where verified messages should arrive
+- CONTACT_SECRET = any long random string
+Limits: rate-limiting is per serverless instance (best effort). For strict limits use the backend patch (routers/contact.py) and set CFG.CONTACT_API_URL to "<backend>/api".

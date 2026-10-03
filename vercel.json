@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/:route(about|features|pricing|founders|security|contact)", "destination": "/index.html" },
+    { "source": "/:route(about|features|pricing|founders|security|contact)/", "destination": "/index.html" }
+  ]
+}
